@@ -197,7 +197,7 @@ class SupRobConModel(nn.Module):
             feature_X2 = self.get_feature(X_2).unsqueeze(dim=1)
             
             feature = torch.cat((feature_X1,feature_X2),dim=1)
-            loss = self.simclr(feature,label=label)
+            loss = self.simclr(feature,labels=label)
             loss.backward()
             x1_tmp = X_1+step_size * torch.sign(X_1.grad)
             perturb1 = torch.clamp(x1_tmp-x1,-eps,eps)
