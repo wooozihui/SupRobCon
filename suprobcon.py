@@ -142,34 +142,34 @@ class SupRobConModel(nn.Module):
                 # not use beta = self.warmup_beta()
                 ### end #####
                 self.eval()
-                adv0,adv1 = self.inf_pgd_simclr(x0,x1,iter_time=self.iter_time,eps=self.eps,step_size=self.step_size)
+                adv0,adv1 = self.inf_pgd_cl(x0,x1,label=label,iter_time=self.iter_time,eps=self.eps,step_size=self.step_size)
                 self.train()
                 #dist.barrier()
                 bs = x0.size()[0]
-                x_combine = torch.cat((x0,x1,adv0,adv1),dim=0)
+                x_combine = torch.cat((adv0,adv1),dim=0)
                 
                 features = self.get_feature(x_combine)
-                feature_0 = features[0:bs]
-                feature_1 = features[bs:2*bs]
-                feature_adv_0 = features[2*bs:3*bs]
-                feature_adv_1 = features[3*bs:]
+                #feature_0 = features[0:bs]
+                #feature_1 = features[bs:2*bs]
+                feature_adv_0 = features[0:bs]
+                feature_adv_1 = features[bs:]
                 
                 
-                z0 = self.mlp_head(feature_0).unsqueeze(1)
-                z1 = self.mlp_head(feature_1).unsqueeze(1)
+                #z0 = self.mlp_head(feature_0).unsqueeze(1)
+                #z1 = self.mlp_head(feature_1).unsqueeze(1)
                 z0_adv = self.mlp_head(feature_adv_0).unsqueeze(1)
                 z1_adv = self.mlp_head(feature_adv_1).unsqueeze(1)
                 
-                z_left = torch.cat((z0,z1,z0_adv),dim=1)
-                z_right =torch.cat((z0,z1,z1_adv),dim=1)
+                #z_left = torch.cat((z0,z1,z0_adv),dim=1)
+                #z_right =torch.cat((z0,z1,z1_adv),dim=1)
                 z_rob = torch.cat((z0_adv,z1_adv),dim=1)
                 
                 #loss_suprobcon = self.suprobcon(z0,z1,z1_adv,label)
-                loss_supcon = (self.supcon(z_left,label) + self.supcon(z_right,label))/2
+                loss_suprobcon = self.supcon(z_rob,label)
                 
-                loss_rob = self.simclr(z_rob)
+                #loss_rob = self.simclr(z_rob)
                 
-                loss_suprobcon = loss_supcon + self.beta * loss_rob
+                #loss_suprobcon = loss_supcon + self.beta * loss_rob
                 
                 feature_1_adv_bk = feature_adv_1.clone().detach()
                 logits = self.backbone.linear(feature_1_adv_bk)
@@ -179,7 +179,7 @@ class SupRobConModel(nn.Module):
                 
                 return loss
 
-    def inf_pgd_simclr(self,x1,x2,eps=8/255,step_size=2/255,iter_time=10,random_init=True):
+    def inf_pgd_cl(self,x1,x2,label=None,eps=8/255,step_size=2/255,iter_time=10,random_init=True):
         device = x1.device
         if random_init:
             random_start_1 = torch.FloatTensor(x1.size()).uniform_(-eps, eps).to(device)
@@ -197,7 +197,7 @@ class SupRobConModel(nn.Module):
             feature_X2 = self.get_feature(X_2).unsqueeze(dim=1)
             
             feature = torch.cat((feature_X1,feature_X2),dim=1)
-            loss = self.simclr(feature)
+            loss = self.simclr(feature,label=label)
             loss.backward()
             x1_tmp = X_1+step_size * torch.sign(X_1.grad)
             perturb1 = torch.clamp(x1_tmp-x1,-eps,eps)
