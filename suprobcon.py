@@ -142,7 +142,7 @@ class SupRobConModel(nn.Module):
                 # not use beta = self.warmup_beta()
                 ### end #####
                 self.eval()
-                adv0,adv1 = self.inf_pgd_cl(x0,x1,label=label,iter_time=self.iter_time,eps=self.eps,step_size=self.step_size)
+                adv0,adv1 = self.inf_pgd_cos(x0,x1,iter_time=self.iter_time,eps=self.eps,step_size=self.step_size)
                 self.train()
                 #dist.barrier()
                 bs = x0.size()[0]
@@ -198,6 +198,33 @@ class SupRobConModel(nn.Module):
             
             feature = torch.cat((feature_X1,feature_X2),dim=1)
             loss = self.simclr(feature,labels=label)
+            loss.backward()
+            x1_tmp = X_1+step_size * torch.sign(X_1.grad)
+            perturb1 = torch.clamp(x1_tmp-x1,-eps,eps)
+            X_1 = Variable(torch.clamp(x1+perturb1,0,1),requires_grad=True)
+            x2_tmp = X_2+step_size * torch.sign(X_2.grad)
+            perturb2 = torch.clamp(x2_tmp-x2,-eps,eps)
+            X_2 = Variable(torch.clamp(x2+perturb2,0,1),requires_grad=True)
+        return X_1.detach(),X_2.detach()
+    
+    def inf_pgd_cos(self,x1,x2,eps=8/255,step_size=2/255,iter_time=10,random_init=True):
+        device = x1.device
+        if random_init:
+            random_start_1 = torch.FloatTensor(x1.size()).uniform_(-eps, eps).to(device)
+            X_1 = Variable(torch.clamp(x1+random_start_1,0,1),requires_grad=True)
+            
+            random_start_2 = torch.FloatTensor(x2.size()).uniform_(-eps, eps).to(device)
+            X_2 = Variable(torch.clamp(x2+random_start_2,0,1),requires_grad=True)
+            
+        else:
+            X_1 = Variable(x1,requires_grad=True)
+            X_2 = Variable(x2,requires_grad=True)
+            
+        for i in range(iter_time):
+            feature_X1 = self.get_feature(X_1)
+            feature_X2 = self.get_feature(X_2)
+            
+            loss = - nn.CosineSimilarity(dim=1)(feature_X1,feature_X2).mean()
             loss.backward()
             x1_tmp = X_1+step_size * torch.sign(X_1.grad)
             perturb1 = torch.clamp(x1_tmp-x1,-eps,eps)

@@ -1,5 +1,5 @@
 CUDA_VISIBLE_DEVICES=2,3 python -m torch.distributed.launch --nproc_per_node=2 --master_port 12333 main_src.py  \
---savepath suprobcon_retemp_0.9 \
+--savepath suprobcon_cos \
 --in_d 512 \
 --train_bs 512 \
 --scheduler cosineanneal \
