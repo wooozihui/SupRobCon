@@ -18,10 +18,7 @@ from logger import *
 from gradualwarmup import *
 from simclr import TransformsSimCLR
 
-tb_path = '/data/wzh777/My_SimCLR/logs'
 
-writer = SummaryWriter(tb_path)
-logger = Logger(tb_path= tb_path)
 ### general setting ####
 
 parser = argparse.ArgumentParser(description='PyTorch--Adversarial Training')
@@ -59,9 +56,14 @@ parser.add_argument('--beta',type=float,default=1)
 parser.add_argument('--temperature_rob',type=float,default=0.5)
 
 #parser.add_argument('--reweight',type=float,default=0.5) ## lamda should be (0,1) to balance the robustness-accuracy tradeoff
-parser.add_argument('--temperature_supcon',type=float,default=0.1)
+parser.add_argument('--temperature_supcon',type=float,default='/data/wzh777/My_SimCLR/logs')
 
 ##### end SupRobCon para ###
+
+### tensorboard path ###
+parser.add_argument('--tb_path',type=str,default=0.1)
+
+
 
 args = parser.parse_args()
 
@@ -77,6 +79,12 @@ if args.local_rank == 0:
         os.makedirs(log_savepath)
 
 init_ddp(args)
+
+tb_path = args.tb_path
+
+writer = SummaryWriter(tb_path)
+logger = Logger(tb_path= tb_path)
+
 torch.backends.cudnn.benchmark = True
 
 trainset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=TransformsSimCLR(32,True))
