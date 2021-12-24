@@ -96,14 +96,14 @@ train_loader = torch.utils.data.DataLoader(trainset,
                                                sampler=train_sampler,
                                                pin_memory=True,
                                                drop_last=True,
-                                               )
+                                               num_workers=args.world_size *4  )
 
 valid_loader = torch.utils.data.DataLoader(validset,
                                            batch_size = args.test_bs,
                                                sampler=valid_sampler,
                                                pin_memory=True,
                                                drop_last=True,
-                                                )
+                                               )
 
 test_loader = torch.utils.data.DataLoader(testset,
                                            batch_size = args.test_bs,
