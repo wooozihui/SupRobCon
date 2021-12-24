@@ -1,5 +1,5 @@
-CUDA_VISIBLE_DEVICES=2,3 python -m torch.distributed.launch --nproc_per_node=2 --master_port 12333 main_src.py  \
---savepath suprobcon_cos \
+CUDA_VISIBLE_DEVICES=0,2 python -W ignore -m torch.distributed.launch --nproc_per_node=2 --master_port 12333 main_src.py  \
+--savepath suprobcon_test \
 --in_d 512 \
 --train_bs 512 \
 --scheduler cosineanneal \
