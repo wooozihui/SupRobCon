@@ -131,7 +131,7 @@ class SupRobConModel(nn.Module):
                 x = torch.cat((x0,x1),dim=0)
                 labels = torch.cat((label,label),dim=0)
                 self.eval()
-                advs = inf_pgd(self,x,labels,iter_time=self.iter_time,eps=self.eps,step_size=self.step_size)
+                advs = self.inf_pgd_src(x,labels,iter_time=self.iter_time,eps=self.eps,step_size=self.step_size)
                 self.train()
                 #dist.barrier()
                 
@@ -141,7 +141,7 @@ class SupRobConModel(nn.Module):
                 z = self.mlp_head(features)
                 z_adv = self.mlp_head(features_adv)
                 
-                loss_suprobcon = self.suprobcon(z,z_adv,labels)
+                loss_suprobcon = self.suprobcon(z_adv,z,labels)
                 
                 feature_adv_bk = features_adv.clone().detach()
                 logits = self.backbone.linear(feature_adv_bk)
@@ -150,6 +150,29 @@ class SupRobConModel(nn.Module):
                 loss = loss_suprobcon + loss_ce_detach
                 
                 return loss
+            
+    def inf_pgd_src(self,x,label,eps=8/255,step_size=2/255,iter_time=10,random_init=True):     
+        device = x.device
+        if random_init:
+            random_start = torch.FloatTensor(x.size()).uniform_(-eps, eps).to(device)
+            X_t = Variable(torch.clamp(x+random_start,0,1),requires_grad=True)
+            #X_t.requires_grad = True
+        else:
+            X_t = Variable(x,requires_grad=True)
+        for i in range(iter_time):
+            features = self.get_feature(x)
+            features_adv = self.get_feature(X_t)
+                
+            z = self.mlp_head(features)
+            z_adv = self.mlp_head(features_adv)
+            
+            loss = self.suprobcon(z_adv,z,label)
+            loss.backward()
+            x_tmp = X_t+step_size * torch.sign(X_t.grad)
+            perturb = torch.clamp(x_tmp-x,-eps,eps)
+            X_t = Variable(torch.clamp(x+perturb,0,1),requires_grad=True)
+            #X_t.requires_grad = True
+        return X_t.detach()
 
     def inf_pgd_cl(self,x1,x2,label=None,eps=8/255,step_size=2/255,iter_time=10,random_init=True):
         device = x1.device
