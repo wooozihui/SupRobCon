@@ -116,8 +116,8 @@ class SupRobConModel(nn.Module):
         out = self.backbone.linear(out)
         return out
     
-    def forward(self,x0,x1=None,label=None):
-        if label == None and x1 == None:
+    def forward(self,x,label=None):
+        if label == None:
             out = self.get_logits(x0)
             return out
         else:
@@ -128,10 +128,8 @@ class SupRobConModel(nn.Module):
                 ## get beta ##
                 # not use beta = self.warmup_beta()
                 ### end #####
-                x = torch.cat((x0,x1),dim=0)
-                labels = torch.cat((label,label),dim=0)
                 self.eval()
-                advs = self.inf_pgd_src(x,labels,iter_time=self.iter_time,eps=self.eps,step_size=self.step_size)
+                advs = self.inf_pgd_src(x,label,iter_time=self.iter_time,eps=self.eps,step_size=self.step_size)
                 self.train()
                 #dist.barrier()
                 
@@ -141,11 +139,11 @@ class SupRobConModel(nn.Module):
                 z = self.mlp_head(features)
                 z_adv = self.mlp_head(features_adv)
                 
-                loss_suprobcon = self.suprobcon(z_adv,z,labels)
+                loss_suprobcon = self.suprobcon(z_adv,z,label)
                 
                 feature_adv_bk = features_adv.clone().detach()
                 logits = self.backbone.linear(feature_adv_bk)
-                loss_ce_detach = torch.nn.CrossEntropyLoss()(logits,labels)
+                loss_ce_detach = torch.nn.CrossEntropyLoss()(logits,label)
                 
                 loss = loss_suprobcon + loss_ce_detach
                 
