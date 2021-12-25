@@ -61,7 +61,7 @@ parser.add_argument('--temperature_supcon',type=float,default='/data/wzh777/My_S
 ##### end SupRobCon para ###
 
 ### tensorboard path ###
-parser.add_argument('--tb_path',type=str,default=0.1)
+parser.add_argument('--tb_path',type=str,default="/data/wzh777/My_SimCLR/logs")
 
 
 
@@ -150,7 +150,7 @@ scaler = torch.cuda.amp.GradScaler()
 ## end ## 
 
 ## logger register ##
-items = ['loss','acc']
+items = ['loss','loss_src','loss_ce','acc']
 logger.register(*items)
 ##.end register ##
 
@@ -174,7 +174,7 @@ for epoch in range(args.training_epoch+args.warm_epoch):
         ## amp ##
         with torch.cuda.amp.autocast():
         ## end ##
-            loss = model(image_0,image_1,labels)
+            loss,loss_suprobcon,loss_ce_detach = model(image_0,image_1,labels)
             optimizer.zero_grad()
         #loss.backward()
         #optimizer.step()
@@ -203,8 +203,8 @@ for epoch in range(args.training_epoch+args.warm_epoch):
                 'adv test': adv_test_acc }
         
         writer.add_scalar('loss', loss, epoch)
-        #writer.add_scalar("loss/loss_supcon",loss_supcon,epoch)
-        #writer.add_scalar('loss/loss_rob', loss_rob, epoch)
+        writer.add_scalar("loss/src",loss_suprobcon,epoch)
+        writer.add_scalar('loss/ce', loss_ce_detach, epoch)
         #writer.add_scalar('loss/loss_ce_detach', loss_ce_detach, epoch)
 
         writer.add_scalar("learning rate",cur_lr,epoch)
@@ -212,7 +212,7 @@ for epoch in range(args.training_epoch+args.warm_epoch):
 
         writer.add_scalars('acc', acc, epoch)
         
-        logger.update(loss.detach().cpu(),acc)
+        logger.update(loss.detach().cpu(),loss_suprobcon.detach().cpu(),loss_ce_detach.detach().cpu(),acc)
         if args.save_last_best:
             if adv_test_acc >= best_rob:
                 torch.save(model.module.backbone.state_dict(),os.path.join(model_savepath,"best_epoch.pt"))

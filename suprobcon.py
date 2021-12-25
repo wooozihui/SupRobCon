@@ -149,7 +149,7 @@ class SupRobConModel(nn.Module):
                 
                 loss = loss_suprobcon + loss_ce_detach
                 
-                return loss
+                return loss,loss_suprobcon,loss_ce_detach
             
     def inf_pgd_src(self,x,label,eps=8/255,step_size=2/255,iter_time=10,random_init=True):     
         device = x.device
