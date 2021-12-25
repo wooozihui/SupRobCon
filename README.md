@@ -41,7 +41,7 @@ You may want to monitor the training process using the tensorboard, this code is
 tensorboard --logdir your_log_path(e.g., ./logs) --bind_all --port your_port(e.g., 23333)
 ```
 
-### Then set the parameters in run.sh
+### Then set the parameter tb_path in run.sh
 ```
 --tb_path = your_log_path
 ```
