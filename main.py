@@ -78,7 +78,7 @@ if args.local_rank == 0:
     if not os.path.exists(log_savepath):
         os.makedirs(log_savepath)
     if args.save_parameters:
-        os.system("cp run.sh"+root+args.savepath+"/run.sh")
+        os.system("cp ./run.sh "+root+args.savepath+"/run.sh")
 
 init_ddp(args)
 
@@ -115,7 +115,7 @@ train_loader = torch.utils.data.DataLoader(trainset,
                                                sampler=train_sampler,
                                                pin_memory=True,
                                                drop_last=True,
-                                               num_workers=args.world_size *4  )
+                                               )
 
 valid_loader = torch.utils.data.DataLoader(validset,
                                            batch_size = args.test_bs,
