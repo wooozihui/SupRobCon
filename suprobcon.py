@@ -76,7 +76,6 @@ class SupRobConModel(nn.Module):
     
     def init_suprobcon(self, temperature, world_size):
         self.suprobcon = SupRobConLoss(temperature=temperature,world_size=world_size)
-        self.beta = beta
         
     def init_pgd(self,eps,step_size,iter_time):
         self.eps = eps
