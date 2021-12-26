@@ -52,11 +52,11 @@ parser.add_argument('--iter_time',type=int,default=10)
 ##### end AT para #####
 ##### para for SupRobCon ####
 
-parser.add_argument('--beta',type=float,default=1)
-parser.add_argument('--temperature_rob',type=float,default=0.5)
+#parser.add_argument('--beta',type=float,default=1)
+#parser.add_argument('--temperature_rob',type=float,default=0.5)
 
 #parser.add_argument('--reweight',type=float,default=0.5) ## lamda should be (0,1) to balance the robustness-accuracy tradeoff
-parser.add_argument('--temperature_supcon',type=float,default='/data/wzh777/My_SimCLR/logs')
+parser.add_argument('--temperature',type=float,default='0.5')
 
 ##### end SupRobCon para ###
 
@@ -135,7 +135,7 @@ backbone = ResNet18()
 model = SupRobConModel(backbone,
                    feature_d=args.in_d,
                    mlp_d = args.out_d,)
-model.init_suprobcon(temperature=args.temperature_supcon,world_size=args.world_size,beta=args.beta)
+model.init_suprobcon(temperature=args.temperature,world_size=args.world_size)
 model.init_pgd(args.eps,args.step_size,args.iter_time)
 
 model = ddp_model_convert(model,args)

@@ -1,13 +1,11 @@
-CUDA_VISIBLE_DEVICES=0,2 python -m torch.distributed.launch --nproc_per_node=2 --master_port 12333 main.py  \
---savepath suprobcon_single_test \
+CUDA_VISIBLE_DEVICES=0,1,2,3 python -m torch.distributed.launch --nproc_per_node=4 --master_port 12333 main.py  \
+--savepath suprobcon_temp_0.1 \
 --in_d 512 \
---train_bs 512 \
+--train_bs 1024 \
 --scheduler cosineanneal \
 --training_epoch 100 \
 --warm_epoch 10 \
 --init_lr 0.1 \
---scale_factor 4 \
---temperature_supcon 0.5 \
---temperature_rob 0.07 \
---save_last_best 1 \
---beta 0.5
+--scale_factor 8 \
+--temperature 0.1 \
+--save_last_best 1

@@ -74,7 +74,7 @@ class SupRobConModel(nn.Module):
         )
         self.cur_epoch = 0
     
-    def init_suprobcon(self, temperature, world_size,beta=1):
+    def init_suprobcon(self, temperature, world_size):
         self.suprobcon = SupRobConLoss(temperature=temperature,world_size=world_size)
         self.beta = beta
         
