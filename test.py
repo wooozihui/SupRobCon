@@ -1,91 +1,101 @@
+import os
 import torch
-import torch.nn as nn
-import torch.distributed as dist
-import diffdist
-from utils import inf_pgd
+from autoattack import AutoAttack
+from ddp_util import *
 from models.resnet import *
-from supcon import *
-import torch.nn.functional as F
+from torchvision import transforms
+import torchvision
+import torch.distributed as dist
+from utils import inf_pgd
+from functools import partial
+from tqdm import tqdm
 
-class SupRobConLoss(nn.Module):
-    def __init__(self,temperature=0.07,world_size=1,lamda=0.5):
-        super(SupRobConLoss, self).__init__()
-        
-        self.temperature = temperature
-        self.world_size = world_size
-        self.lamda = lamda
-    
-    def get_mask(self,labels):
-        device = labels.device
-        
-        bs = len(labels)
-        N = 2 * bs 
-        label_double = torch.cat((labels,labels),0)
-        mask1 = torch.ones((N, N)).to(device)
-        mask1 = mask1.fill_diagonal_(0)
-        
-        label_horizontal = label_double.clone()
-        label_vertical = label_horizontal.view(-1,1).to(device)
-        
-        mask2 = label_horizontal-label_vertical
-        mask2 = mask2 == 0
-        mask2 = mask2.float()
-        
-        return mask1,mask2
-        
-    def forward(self,z0,z1,z1_adv,labels):
-        bs = z0.size()[0]
-        N = bs*self.world_size
-        
-        if self.world_size > 1:
-            z0_list = [torch.zeros_like(z0) for _ in range(self.world_size)]
-            z1_list = [torch.zeros_like(z1) for _ in range(self.world_size)]
-            z1_adv_list = [torch.zeros_like(z1_adv) for _ in range(self.world_size)]
-            label_lis = [torch.zeros_like(labels) for _ in range(self.world_size)]
-            
-            z0_list = diffdist.functional.all_gather(z0_list, z0)
-            z1_list = diffdist.functional.all_gather(z1_list, z1)
-            z1_adv_list = diffdist.functional.all_gather(z1_adv_list, z1_adv)
-            label_lis = diffdist.functional.all_gather(label_lis, labels)
-            
-            z0 = torch.cat(z0_list,dim=0)
-            z1 = torch.cat(z1_list,dim=0)
-            z1_adv = torch.cat(z1_adv_list,dim=0)
-            labels = torch.cat(label_lis,dim=0)
 
-        mask_eye, mask_same_class = self.get_mask(labels)
-        mask_final = mask_eye * mask_same_class
-        print(mask_same_class)
-        print(mask_final)
-        
-        
-        vector_0_1 = torch.cat((z0,z1),dim=0)
-        vector_0_1_adv = torch.cat((z0,z1_adv),dim=0)
-        
-        sim_mat_0_1 = nn.CosineSimilarity(dim=2)(vector_0_1.unsqueeze(1), vector_0_1.unsqueeze(0)) / self.temperature
-        sim_mat_0_1_adv = nn.CosineSimilarity(dim=2)(vector_0_1_adv.unsqueeze(1), vector_0_1_adv.unsqueeze(0)) / self.temperature
-        
-        print(sim_mat_0_1.size())
-        
-        sim_mat = self.lamda * sim_mat_0_1 + (1-self.lamda) * sim_mat_0_1_adv
-        
-        exp_logits = torch.exp(sim_mat) * mask_eye
-        print(exp_logits)
-        
-        log_prob = sim_mat - torch.log(exp_logits.sum(1, keepdim=True))
-        
-        print(log_prob)
-        
-        mean_log_prob_pos = (mask_final * log_prob).sum(1) / mask_final.sum(1)
-        
-        print(mean_log_prob_pos.size())
-        
-        loss = - mean_log_prob_pos.view(2,N).mean()
-        print(loss)
-        return loss
+parser = argparse.ArgumentParser(description='Robustness test')
+parser.add_argument('--local_rank',type=int, default=0)
+parser.add_argument('--test_bs',type=int, default=250)
+parser.add_argument("--model_path",type=str,default=None)
+parser.add_argument("--load_best",type=bool,default=True)
+parser.add_argument('--total_num',type=int, default=1000)
+parser.add_argument('--attack_type',type=str,default="pgd") # option: AA, cw
+
+parser.add_argument('--aa_version',type=str,default="base") 
+
+
+parser.add_argument('--eps',type=float,default=8/255)
+parser.add_argument('--step_size',type=float,default=2/255)
+parser.add_argument('--iter_time',type=int,default=20)
+
+
+args = parser.parse_args()
+init_ddp(args)
+
+
+transform_test = transforms.Compose([
+                transforms.ToTensor(),
+            ])
+testset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=transform_test)
+test_sampler = torch.utils.data.distributed.DistributedSampler(testset)
+
+test_loader = torch.utils.data.DataLoader(testset,
+                                           batch_size = args.test_bs,
+                                               sampler=test_sampler,
+                                               pin_memory=True,
+                                               drop_last=True,
+                                               )
+
+if args.model_path !=None:
+    root = "checkpoints/"
+    model = ResNet18()
+    if args.load_best:
+        st_path = root+args.model_path+"/model/"+"best_epoch.pt"
+    else:
+        st_path = root+args.model_path+"/model/"+"last_epoch.pt"
+    st = torch.load(st_path)
+    model.load_state_dict(st)
+    model = model.to(args.device)
+    model.eval()
     
+    if args.attack_type == "AA":
+        AA = AutoAttack(model, eps=args.eps, version="standard",device=args.device,verbose=False)
+        if args.aa_version == "base":
+            AA.attacks_to_run = ['apgd-ce','apgd-t']
+            
+    
+    
+else:
+    print("please give the model path")
+
+
 if __name__ == '__main__':
-    a = torch.ones(4,128)/10
-    label = torch.Tensor([1,2,3,1]).long()
-    cri = SupRobConLoss()
-    cri(a,a,a,label)
+    tmp = 0
+    total_corr = 0
+    total_num = int(args.total_num /args.world_size)
+    if args.local_rank == 0:
+        test_loader = tqdm(test_loader)
+    for images,labels in test_loader:
+        tmp += images.size()[0]
+        images = images.cuda(non_blocking=True,device=args.device)
+        labels = labels.cuda(non_blocking=True,device=args.device)
+        
+        if args.attack_type == "pgd":
+            advs = inf_pgd(model,images,labels,eps=args.eps,step_size=args.step_size,iter_time=args.iter_time)
+        
+        elif args.attack_type == "AA":
+            advs = AA.run_standard_evaluation(images, labels,bs=images.size()[0])
+        
+        else:
+            advs = images
+        
+        err,corr = acc_test(model,advs,labels)
+        total_corr += corr
+        #dist.barrier()
+        if tmp>=total_num:
+            if ddp_available():
+                dist.all_reduce(total_corr)
+            break
+        
+    robustness = total_corr/args.total_num
+    if args.local_rank == 0:
+        print("final robustness:")
+        print(robustness)

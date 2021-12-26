@@ -33,7 +33,7 @@ parser.add_argument('--out_d',type=int,default=128)
 parser.add_argument('--scheduler',type=str,default='mutistep')
 parser.add_argument('--init_lr',type=float,default=0.1)
 parser.add_argument('--save_last_best',type=bool,default=True)
-
+parser.add_argument('--save_parameters',type=bool,default = True)
 ## end general setting ##
 ## warmup ##
 
@@ -77,6 +77,8 @@ if args.local_rank == 0:
         os.makedirs(model_savepath)
     if not os.path.exists(log_savepath):
         os.makedirs(log_savepath)
+    if args.save_parameters:
+        os.system("cp run.sh"+root+args.savepath+"/run.sh")
 
 init_ddp(args)
 
@@ -134,7 +136,6 @@ model = SupRobConModel(backbone,
                    feature_d=args.in_d,
                    mlp_d = args.out_d,)
 model.init_suprobcon(temperature=args.temperature_supcon,world_size=args.world_size,beta=args.beta)
-model.init_simclr(temperature=args.temperature_rob,world_size=args.world_size)
 model.init_pgd(args.eps,args.step_size,args.iter_time)
 
 model = ddp_model_convert(model,args)

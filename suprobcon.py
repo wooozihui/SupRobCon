@@ -83,8 +83,6 @@ class SupRobConModel(nn.Module):
         self.step_size = step_size
         self.iter_time = iter_time
         
-    def init_simclr(self,temperature,world_size):
-        self.simclr = SupConLoss(temperature=temperature,world_size=world_size)
         
     
     '''
@@ -172,60 +170,7 @@ class SupRobConModel(nn.Module):
             #X_t.requires_grad = True
         return X_t.detach()
 
-    def inf_pgd_cl(self,x1,x2,label=None,eps=8/255,step_size=2/255,iter_time=10,random_init=True):
-        device = x1.device
-        if random_init:
-            random_start_1 = torch.FloatTensor(x1.size()).uniform_(-eps, eps).to(device)
-            X_1 = Variable(torch.clamp(x1+random_start_1,0,1),requires_grad=True)
-            
-            random_start_2 = torch.FloatTensor(x2.size()).uniform_(-eps, eps).to(device)
-            X_2 = Variable(torch.clamp(x2+random_start_2,0,1),requires_grad=True)
-            
-        else:
-            X_1 = Variable(x1,requires_grad=True)
-            X_2 = Variable(x2,requires_grad=True)
-            
-        for i in range(iter_time):
-            feature_X1 = self.get_feature(X_1).unsqueeze(dim=1)
-            feature_X2 = self.get_feature(X_2).unsqueeze(dim=1)
-            
-            feature = torch.cat((feature_X1,feature_X2),dim=1)
-            loss = self.simclr(feature,labels=label)
-            loss.backward()
-            x1_tmp = X_1+step_size * torch.sign(X_1.grad)
-            perturb1 = torch.clamp(x1_tmp-x1,-eps,eps)
-            X_1 = Variable(torch.clamp(x1+perturb1,0,1),requires_grad=True)
-            x2_tmp = X_2+step_size * torch.sign(X_2.grad)
-            perturb2 = torch.clamp(x2_tmp-x2,-eps,eps)
-            X_2 = Variable(torch.clamp(x2+perturb2,0,1),requires_grad=True)
-        return X_1.detach(),X_2.detach()
     
-    def inf_pgd_cos(self,x1,x2,eps=8/255,step_size=2/255,iter_time=10,random_init=True):
-        device = x1.device
-        if random_init:
-            random_start_1 = torch.FloatTensor(x1.size()).uniform_(-eps, eps).to(device)
-            X_1 = Variable(torch.clamp(x1+random_start_1,0,1),requires_grad=True)
-            
-            random_start_2 = torch.FloatTensor(x2.size()).uniform_(-eps, eps).to(device)
-            X_2 = Variable(torch.clamp(x2+random_start_2,0,1),requires_grad=True)
-            
-        else:
-            X_1 = Variable(x1,requires_grad=True)
-            X_2 = Variable(x2,requires_grad=True)
-            
-        for i in range(iter_time):
-            feature_X1 = self.get_feature(X_1)
-            feature_X2 = self.get_feature(X_2)
-            
-            loss = - nn.CosineSimilarity(dim=1)(feature_X1,feature_X2).mean()
-            loss.backward()
-            x1_tmp = X_1+step_size * torch.sign(X_1.grad)
-            perturb1 = torch.clamp(x1_tmp-x1,-eps,eps)
-            X_1 = Variable(torch.clamp(x1+perturb1,0,1),requires_grad=True)
-            x2_tmp = X_2+step_size * torch.sign(X_2.grad)
-            perturb2 = torch.clamp(x2_tmp-x2,-eps,eps)
-            X_2 = Variable(torch.clamp(x2+perturb2,0,1),requires_grad=True)
-        return X_1.detach(),X_2.detach()
     
 
 
