@@ -115,7 +115,7 @@ class SupRobConModel(nn.Module):
     
     def forward(self,x,label=None):
         if label == None:
-            out = self.get_logits(x0)
+            out = self.get_logits(x)
             return out
         else:
             if label == None:
