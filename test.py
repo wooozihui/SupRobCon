@@ -62,7 +62,8 @@ if args.model_path !=None:
         AA = AutoAttack(model, eps=args.eps, version="standard",device=args.device,verbose=False)
         if args.aa_version == "base":
             AA.attacks_to_run = ['apgd-ce','apgd-t']
-            
+        if args.aa_version == "dlr":
+            AA.attacks_to_run = ['apgd-dlr']
     
     
 else:

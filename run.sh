@@ -1,5 +1,6 @@
-CUDA_VISIBLE_DEVICES=0,1,2,3 python -m torch.distributed.launch --nproc_per_node=4 --master_port 12333 main.py  \
---savepath suprobcon_temp_0.5_supcon_detach \
+CUDA_VISIBLE_DEVICES=0,1 python -m torch.distributed.launch \
+--nproc_per_node=2 --master_port 12333 main.py  \
+--savepath suprobcon_0.5 \
 --in_d 512 \
 --out_d 128 \
 --train_bs 1024 \

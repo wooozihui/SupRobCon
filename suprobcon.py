@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.distributed as dist
 import diffdist
-from utils import inf_pgd
+from utils import inf_pgd,inf_pgd_with_logits_scale
 from models.resnet import *
 from supcon import *
 import torch.nn.functional as F
@@ -81,8 +81,6 @@ class SupRobConModel(nn.Module):
         self.eps = eps
         self.step_size = step_size
         self.iter_time = iter_time
-        
-        
     
     '''
     not use
@@ -128,7 +126,6 @@ class SupRobConModel(nn.Module):
                 self.eval()
                 advs = inf_pgd(self,x,label,iter_time=self.iter_time,eps=self.eps,step_size=self.step_size)
                 self.train()
-                #dist.barrier()
                 
                 features = self.get_feature(x)
                 features_adv = self.get_feature(advs)
@@ -151,7 +148,6 @@ class SupRobConModel(nn.Module):
         if random_init:
             random_start = torch.FloatTensor(x.size()).uniform_(-eps, eps).to(device)
             X_t = Variable(torch.clamp(x+random_start,0,1),requires_grad=True)
-            #X_t.requires_grad = True
         else:
             X_t = Variable(x,requires_grad=True)
         for i in range(iter_time):
@@ -166,7 +162,6 @@ class SupRobConModel(nn.Module):
             x_tmp = X_t+step_size * torch.sign(X_t.grad)
             perturb = torch.clamp(x_tmp-x,-eps,eps)
             X_t = Variable(torch.clamp(x+perturb,0,1),requires_grad=True)
-            #X_t.requires_grad = True
         return X_t.detach()
 
     
