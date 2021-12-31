@@ -126,7 +126,7 @@ class SupRobConModel(nn.Module):
                 # not use beta = self.warmup_beta()
                 ### end #####
                 self.eval()
-                advs = self.inf_pgd_src(x,label,iter_time=self.iter_time,eps=self.eps,step_size=self.step_size)
+                advs = inf_pgd(self,x,label,iter_time=self.iter_time,eps=self.eps,step_size=self.step_size)
                 self.train()
                 #dist.barrier()
                 
@@ -136,7 +136,7 @@ class SupRobConModel(nn.Module):
                 z = self.mlp_head(features)
                 z_adv = self.mlp_head(features_adv)
                 
-                loss_suprobcon = self.suprobcon(z_adv,z,label)
+                loss_suprobcon = self.suprobcon(z_adv,z.detach(),label) + self.suprobcon(z,z_adv.detach(),label)
                 
                 feature_adv_bk = features_adv.clone().detach()
                 logits = self.backbone.linear(feature_adv_bk)

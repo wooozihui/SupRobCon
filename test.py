@@ -6,7 +6,7 @@ from models.resnet import *
 from torchvision import transforms
 import torchvision
 import torch.distributed as dist
-from utils import inf_pgd
+from utils import inf_pgd,inf_pgd_with_logits_scale
 from functools import partial
 from tqdm import tqdm
 
@@ -20,6 +20,8 @@ parser.add_argument('--total_num',type=int, default=1000)
 parser.add_argument('--attack_type',type=str,default="pgd") # option: AA, cw
 
 parser.add_argument('--aa_version',type=str,default="base") 
+
+parser.add_argument('--alpha',type=float,default=1)
 
 
 parser.add_argument('--eps',type=float,default=8/255)
@@ -83,6 +85,9 @@ if __name__ == '__main__':
         
         elif args.attack_type == "AA":
             advs = AA.run_standard_evaluation(images, labels,bs=images.size()[0])
+        
+        elif args.attack_type == "pgd_logits_scale":
+            advs = inf_pgd_with_logits_scale(model,images,labels,alpha=args.alpha,eps=args.eps,step_size=args.step_size,iter_time=args.iter_time)
         
         else:
             advs = images
