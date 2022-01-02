@@ -68,9 +68,11 @@ class SupRobConModel(nn.Module):
         self.backbone = backbone
         
         self.mlp_head = nn.Sequential(
-            nn.Linear(feature_d, feature_d, bias=False),
-            nn.ReLU(),
-            nn.Linear(feature_d, mlp_d, bias=False),
+            nn.Linear(feature_d, feature_d),
+            nn.BatchNorm1d(feature_d),
+            nn.ReLU(inplace=True),
+            nn.Linear(feature_d, mlp_d),
+            #nn.ReLU(),
         )
         self.cur_epoch = 0
     
