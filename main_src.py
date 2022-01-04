@@ -150,7 +150,7 @@ scaler = torch.cuda.amp.GradScaler()
 ## end ## 
 
 ## logger register ##
-items = ['loss','loss_src','loss_ce','acc']
+items = ['loss','acc']
 logger.register(*items)
 ##.end register ##
 
@@ -212,7 +212,7 @@ for epoch in range(args.training_epoch+args.warm_epoch):
 
         writer.add_scalars('acc', acc, epoch)
         
-        logger.update(loss.detach().cpu(),loss_suprobcon.detach().cpu(),loss_ce_detach.detach().cpu(),acc)
+        logger.update(loss.detach().cpu(),acc)
         if args.save_last_best:
             if adv_test_acc >= best_rob:
                 torch.save(model.module.backbone.state_dict(),os.path.join(model_savepath,"best_epoch.pt"))
