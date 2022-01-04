@@ -17,7 +17,7 @@ from suprobcon import *
 from logger import *
 from gradualwarmup import *
 from simclr import TransformsSimCLR
-
+from simsiam import *
 
 ### general setting ####
 
@@ -121,12 +121,12 @@ test_loader = torch.utils.data.DataLoader(testset,
                                                )
 
 backbone = ResNet18()
-model = SupRobConModel(backbone,
-                   feature_d=args.in_d,
-                   mlp_d = args.out_d,)
-model.init_suprobcon(temperature=args.temperature_supcon,world_size=args.world_size,beta=args.beta)
-model.init_simclr(temperature=args.temperature_rob,world_size=args.world_size)
-model.init_pgd(args.eps,args.step_size,args.iter_time)
+model = SimSiamModel(backbone,
+                   in_d=args.in_d,
+                   out_d = args.out_d,)
+#model.init_suprobcon(temperature=args.temperature_supcon,world_size=args.world_size,beta=args.beta)
+#model.init_simclr(temperature=args.temperature_rob,world_size=args.world_size)
+#model.init_pgd(args.eps,args.step_size,args.iter_time)
 
 model = ddp_model_convert(model,args)
 
@@ -174,7 +174,7 @@ for epoch in range(args.training_epoch+args.warm_epoch):
         ## amp ##
         with torch.cuda.amp.autocast():
         ## end ##
-            loss,loss_suprobcon,loss_ce_detach = model(image_0,image_1,labels)
+            loss = model(image_0,image_1,labels)
             optimizer.zero_grad()
         #loss.backward()
         #optimizer.step()

@@ -17,7 +17,7 @@ class TransformsSimCLR:
     """
 
     def __init__(self, size, train=True):
-        s = 1
+        s = 0.5
         self.train = train
         
         color_jitter = torchvision.transforms.ColorJitter(

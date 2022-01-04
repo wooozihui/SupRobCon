@@ -135,7 +135,7 @@ class SupRobConModel(nn.Module):
                 z = self.mlp_head(features)
                 z_adv = self.mlp_head(features_adv)
                 
-                loss_suprobcon = self.suprobcon(z_adv,z,label)
+                loss_suprobcon = self.suprobcon(z,z_adv,label)
                 
                 feature_adv_bk = features_adv.clone().detach()
                 logits = self.backbone.linear(feature_adv_bk)
